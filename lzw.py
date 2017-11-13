@@ -2,8 +2,10 @@
 
 from utils_lzw import Trie, Array
 import sys
+import math
+from bitstring import BitArray, BitStream
 
-log = False
+eFlag = False
 
 # string -> (size, index array)
 def lzw_encode(data):
@@ -50,15 +52,27 @@ def lzw_decode(dicSize, enc):
         i = i+1
     return ret
 
-# (size, index array) -> bitstream
+# (size, index array) -> BitArray
 def bitfy(dicSize, enc):
-    pass
+    ret = BitArray("uint:8=%s" % dicSize)
+    bitSize = math.ceil(math.log(dicSize, 2))
+    for d in enc:
+        ret += BitArray("uint:%s=%s" % (bitSize, d))
+    return ret
 
-# bitstream -> (size, index array)
+# BitArray -> (size, index array)
 def unbitfy(encoding):
-    pass
+    encoding = BitStream(encoding)
+    dicSize = encoding.read('uint:8')
+    bitSize = math.ceil(math.log(dicSize, 2))
+    bitLen = len(encoding)
+    ret = []
+    while encoding.pos < bitLen:
+        ret.append(encoding.read("uint:%s" % bitSize))
+    return (dicSize, ret)
 
 if __name__ == "__main__":
+    # parse arguments
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("infile", type=str, help="input file")
@@ -67,8 +81,8 @@ if __name__ == "__main__":
     parser.add_argument("-e", action="store_true", help="print on screen")
     args = parser.parse_args()
 
-    # set logging options
-    log = args.e
+    # set flags
+    eFlag = args.e
 
     # read input file
     data = None
@@ -81,26 +95,26 @@ if __name__ == "__main__":
         f.close()
 
     # lzw_encode
-    encoding = bitfy(lzw_encode(data))
+    dicSize, enc = lzw_encode(data)
+    encoding = bitfy(dicSize, enc)
 
     # write encoded output file
     try:
-        pass
-        #f = open(args.encoding, 'wb')
-        #f.write(encoding)
+        f = open(args.encoding, 'wb')
+        encoding.tofile(f)
     except:
         print("Error opening encoding:", sys.exc_info()[0])
     else:
         f.close()
 
     # lzw_decode
-    outfile = lzw_decode(unbitfy(encoding))
+    dicSize, enc = unbitfy(encoding)
+    outfile = lzw_decode(dicSize, enc)
 
     # write decoded output file
     try:
-        pass
-        #f = open(args.outfile, 'w')
-        #f.write(outfile)
+        f = open(args.outfile, 'w')
+        f.write(outfile)
     except:
         print("Error opening outfile:", sys.exc_info()[0])
     else:
