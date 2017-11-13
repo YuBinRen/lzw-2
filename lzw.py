@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from trie import Trie, Array
+from utils_lzw import Trie, Array
 import sys
 
 log = False
