@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from utils_lzw import Trie, Array
+from utils_lzw import Trie, alphabet
 import sys
 import math
 import time
@@ -10,54 +10,50 @@ from bitstring import BitArray, BitStream
 # encode string data into index array
 # string -> (size, index array)
 def lzw_encode(data):
+    ret = []
     dic = Trie()
     w = ''
-    ret = []
     for c in data:
         if dic.exists(w+c):
             w = w + c
         else:
             dic.add(w+c)
-            #print(dic.code(w), w) #
             ret.append(dic.code(w))
             w = c
-    #print(dic.code(w), w) #
     ret.append(dic.code(w))
-    #print(dic.cnt) #
     return (dic.cnt, ret)
 
 # decode index array to string data
 # (size, index array) -> string
 def lzw_decode(dicSize, enc):
-    dic = Array(dicSize)
-    i = 0
-    size = len(enc)
     ret = ""
-    k = enc[i]
-    i = i+1
-    entry = dic.at(k)
-    #print(entry) #
-    ret = ret + entry
+    dic = [None for i in range(dicSize)]
+    cnt = 0
+    for c in alphabet:
+        dic[cnt] = c
+        cnt += 1
+    entry = dic[enc[0]]
+    ret += entry
     w = entry
-    while (i < size):
-        k = enc[i]
-        if dic.exists(k):
-            entry = dic.at(k)
-        elif k == dicSize:
-            entry = w + w[0]
+    for k in enc[1:]:
+        if k < cnt:
+            entry = dic[k]
+            ret += entry
+            dic[cnt] = w + entry[0]
+            cnt += 1
+            w = entry
         else:
-            raise ValueError("Invalid Code")
-        #print(entry) #
-        ret = ret + entry
-        dic.add(w+entry[0])
-        w = entry
-        i = i+1
+            entry = w + w[0]
+            ret += entry
+            dic[cnt] = entry
+            cnt += 1
+            w = entry
     return ret
 
 # turn index array to bit array
 # (size, index array) -> BitArray
 def bitfy(dicSize, enc):
-    ret = BitArray("uint:8=%s" % dicSize)
+    ret = BitArray("uint:31=%s" % dicSize)
     bitSize = math.ceil(math.log(dicSize, 2))
     for d in enc:
         ret += BitArray("uint:%s=%s" % (bitSize, d))
@@ -67,7 +63,7 @@ def bitfy(dicSize, enc):
 # BitArray -> (size, index array)
 def unbitfy(encoding):
     encoding = BitStream(encoding)
-    dicSize = encoding.read('uint:8')
+    dicSize = encoding.read('uint:31')
     bitSize = math.ceil(math.log(dicSize, 2))
     bitLen = len(encoding)
     ret = []
